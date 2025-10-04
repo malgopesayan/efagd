@@ -30,11 +30,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# --- Passkey Configuration ---
-PASSKEY = "86700"
-AUTHORIZED_USERS = set()
-
-
 # --- API Key Configuration ---
 API_KEYS = {
     "GEMINI_ANSWER": os.getenv("GEMINI_ANSWER"),
@@ -120,36 +115,16 @@ except Exception as e:
     logger.error(f"Error during global AI client initializations: {e}")
 
 
-# --- NEW: Login command handler ---
-async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles the /login command to authorize users."""
-    try:
-        provided_key = context.args[0]
-        if provided_key == PASSKEY:
-            AUTHORIZED_USERS.add(update.message.from_user.id)
-            await update.message.reply_text("✅ Access granted. You can now use the bot.")
-            logger.info(f"User {update.message.from_user.id} authenticated successfully.")
-        else:
-            await update.message.reply_text("❌ Access denied. Incorrect passkey.")
-            logger.warning(f"Failed login attempt by user {update.message.from_user.id}.")
-    except (IndexError, ValueError):
-        await update.message.reply_text("Usage: /login <passkey>")
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "🤖 Welcome to AI MCQ Solver Bot!\n\n"
-        "This bot is protected. Please use the /login command with the correct passkey to begin.\n\n"
-        "Example: `/login 12345`"
+        "Send me a photo OR text of your MCQ question and I'll analyze it with multiple AI models!\n\n"
+        "Supported formats: JPEG, PNG\n"
+        "Max size: 5MB"
     )
     await update.message.reply_text(welcome_text)
 
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # --- MODIFIED: Authorization Check ---
-    if update.message.from_user.id not in AUTHORIZED_USERS:
-        await update.message.reply_text("🚫 Unauthorized. Please use `/login <passkey>` to get access.")
-        return
-
     message = update.message
     photo = message.photo[-1] if message.photo else None
     
@@ -245,11 +220,6 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e: logger.error(f"Error deleting temp file {img_path}: {e}")
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # --- MODIFIED: Authorization Check ---
-    if update.message.from_user.id not in AUTHORIZED_USERS:
-        await update.message.reply_text("🚫 Unauthorized. Please use `/login <passkey>` to get access.")
-        return
-        
     text = update.message.text
     if not text or text.isspace():
         await update.message.reply_text("Please provide text for the question.")
@@ -303,7 +273,7 @@ async def gemini_answer_from_image(img_path):
     try:
         genai.configure(api_key=API_KEYS["GEMINI_ANSWER"])
         img = Image.open(img_path)
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        model = genai.GenerativeModel("gemini-2.5-flash-lite-preview-06-17")
         prompt_parts = [
             "For multiple-choice questions (MCQs), respond only with the correct option in the format: 'The correct answer is: a) [option]'. Do not provide any explanation. For non-MCQ questions, provide a short, clear, and accurate answer without unnecessary detail.",
             img
@@ -317,7 +287,7 @@ async def gemini_answer_from_image(img_path):
 async def gemini_answer_from_text(text):
     try:
         genai.configure(api_key=API_KEYS["GEMINI_ANSWER"])
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        model = genai.GenerativeModel("gemini-2.5-flash-lite-preview-06-17")
         prompt_parts = [
             "For multiple-choice questions (MCQs), respond only with the correct option in the format: 'The correct answer is: a) [option]'. Do not provide any explanation. For non-MCQ questions, provide a short, clear, and accurate answer without unnecessary detail.",
             text
@@ -350,11 +320,11 @@ async def process_model_with_name(model_name_display, query_text, model_key_inte
             messages_payload=[{"role": "system", "content": system_prompt_content}, {"role": "user", "content": user_content}]
             completion = await asyncio.to_thread(
                 groq_client.chat.completions.create,
-                model="llama3-70b-8192", messages=messages_payload, temperature=0.1
+                model="meta-llama/llama-4-scout-17b-16e-instruct", messages=messages_payload, temperature=0.1
             )
             response_content = completion.choices[0].message.content
         elif model_key_internal == "deepseek" and groq_client:
-            target_deepseek_model = "deepseek-coder-33b-instruct" # Example model, adjust if needed
+            target_deepseek_model = "deepseek-r1-distill-llama-70b"
             messages_payload=[{"role": "system", "content": system_prompt_content}, {"role": "user", "content": user_content}]
             completion = await asyncio.to_thread(
                 groq_client.chat.completions.create,
@@ -364,13 +334,13 @@ async def process_model_with_name(model_name_display, query_text, model_key_inte
         elif model_key_internal == "gpt4o_github_azure_sdk" and github_gpt_client_azure_sdk: # Use GPT client
             azure_sdk_messages = [SystemMessage(content=system_prompt_content), UserMessage(content=user_content)]
             completion = await asyncio.to_thread(
-                github_gpt_client_azure_sdk.complete, model="gpt-4o", messages=azure_sdk_messages, temperature=0.1
+                github_gpt_client_azure_sdk.complete, model="openai/gpt-4o", messages=azure_sdk_messages, temperature=0.1
             )
             response_content = completion.choices[0].message.content
         elif model_key_internal == "grok_github_azure_sdk" and github_grok_client_azure_sdk: # Use Grok client
             azure_sdk_messages = [SystemMessage(content=system_prompt_content), UserMessage(content=user_content)]
             completion = await asyncio.to_thread(
-                github_grok_client_azure_sdk.complete, model="grok-1", messages=azure_sdk_messages, temperature=0.1
+                github_grok_client_azure_sdk.complete, model="xai/grok-3", messages=azure_sdk_messages, temperature=0.1
             )
             response_content = completion.choices[0].message.content
         else:
@@ -466,10 +436,6 @@ def main():
          logger.warning(f"Bot starting with missing/placeholder configs for: {', '.join(missing_or_placeholder_configs)}. Functionality may be limited.")
     
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    
-    # --- MODIFIED: Add login handler first ---
-    application.add_handler(CommandHandler("login", login))
-    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.PHOTO, handle_image))
     application.add_handler(MessageHandler(filters.Document.IMAGE, handle_image)) 
