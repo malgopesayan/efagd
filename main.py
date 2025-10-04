@@ -37,12 +37,12 @@ AUTHORIZED_USERS = set()
 
 # --- API Key Configuration ---
 API_KEYS = {
-    "GEMINI_ANSWER": os.getenv("GEMINI_ANSWER", "AIzaSyANSjpUDyG-ekfcxuaaDlBjJ1SN1jhXkrM"),
-    "GEMINI_TEXT": os.getenv("GEMINI_TEXT", "AIzaSyB8801ZIw0hLj6SvTAQ5Fs7Dw9C0711j0U"),
-    "NVIDIA": os.getenv("NVIDIA", "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"),
-    "GROQ": os.getenv("GROQ", "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"),
-    "GITHUB_GPT": os.getenv("GITHUB_GPT_PAT", "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"), # PAT for GPT models via GitHub
-    "GITHUB_GROK": os.getenv("GITHUB_GROK_PAT", "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") # SEPARATE PAT for Grok 3 via GitHub
+    "GEMINI_ANSWER": os.getenv("GEMINI_ANSWER"),
+    "GEMINI_TEXT": os.getenv("GEMINI_TEXT"),
+    "NVIDIA": os.getenv("NVIDIA"),
+    "GROQ": os.getenv("GROQ"),
+    "GITHUB_GPT": os.getenv("GITHUB_GPT_PAT"),
+    "GITHUB_GROK": os.getenv("GITHUB_GROK_PAT"),
 }
 
 # --- Telegram Bot Token ---
