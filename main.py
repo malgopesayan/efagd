@@ -201,7 +201,7 @@ async def gemini_answer_from_image(img_path):
     try:
         genai.configure(api_key=API_KEYS["GEMINI_ANSWER"])
         img = Image.open(img_path)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-pro")
         prompt = "For multiple-choice questions (MCQs), respond only with the correct option in the format: 'The correct answer is: a) [option]'. Do not provide any explanation. For non-MCQ questions, provide a short, clear, and accurate answer without unnecessary detail."
         response = await model.generate_content_async([prompt, img])
         return ("Gemini Vision (Image)", clean_response(response.text))
@@ -261,7 +261,7 @@ async def gemini_text_extract(img_path):
     try:
         genai.configure(api_key=API_KEYS["GEMINI_TEXT"])
         img = Image.open(img_path)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-pro")
         prompt = "Extract all text exactly as it appears in the image. Preserve line breaks and formatting as much as possible. Output only the extracted text."
         response = await model.generate_content_async([prompt, img])
         extracted_text = response.text.strip()
