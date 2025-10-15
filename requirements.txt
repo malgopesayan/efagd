@@ -1,7 +1,4 @@
 python-telegram-bot
-Pillow
 google-generativeai
 openai
-groq
-azure-ai-inference
-azure-core
+Pillow
